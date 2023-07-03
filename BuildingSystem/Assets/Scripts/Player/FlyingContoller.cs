@@ -21,6 +21,7 @@ public class FlyingContoller : MonoBehaviour
     private void Start()
     {
         playerCam = GetComponentInChildren<Camera>();
+        playerCam.transform.localRotation = Quaternion.Euler(0, 0, 0);
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
@@ -60,7 +61,7 @@ public class FlyingContoller : MonoBehaviour
 
     private void Rise_Descend()
     {
-        inputVec = Vector3.up * (Input.GetKey(KeyCode.Space) ? 1 : 0) + Vector3.down * (Input.GetKey(KeyCode.Space) ? 1 : 0);
+        inputVec = Vector3.up * (Input.GetKey(KeyCode.Space) ? 1 : 0) + Vector3.down * (Input.GetKey(KeyCode.LeftControl) ? 1 : 0);
         transform.Translate(inputVec * riseSpeed * Time.deltaTime, Space.World);
     }
 
