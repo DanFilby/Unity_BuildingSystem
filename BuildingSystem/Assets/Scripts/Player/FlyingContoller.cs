@@ -1,11 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Transactions;
 using UnityEngine;
 
 public class FlyingContoller : MonoBehaviour
 {
     [Header("Flying Settings")]
-    public float speed = 5.0f;
+    public float moveSpeed = 5.0f;
+    public float riseSpeed = 2.5f;
     public Vector2 lookSensitivity = Vector2.one;
 
     [Header("References")]
@@ -28,9 +30,10 @@ public class FlyingContoller : MonoBehaviour
     void Update()
     {
         //lock movement and looking when building
-        if (!buildController.currentlyBuilding) {
+        if (!buildController.CurrentlyBuilding) {
             Move();
             Look();
+            Rise_Descend();
         }
 
         MangeBuildMode();
@@ -52,21 +55,27 @@ public class FlyingContoller : MonoBehaviour
     {
         //wasd movement: forward in the cam's direction and left-right using the players orientation 
         inputVec = playerCam.transform.forward * Input.GetAxis("Vertical") + transform.right * Input.GetAxis("Horizontal");      
-        transform.Translate(inputVec.normalized * speed * Time.deltaTime, Space.World);
+        transform.Translate(inputVec.normalized * moveSpeed * Time.deltaTime, Space.World);
+    }
+
+    private void Rise_Descend()
+    {
+        inputVec = Vector3.up * (Input.GetKey(KeyCode.Space) ? 1 : 0) + Vector3.down * (Input.GetKey(KeyCode.Space) ? 1 : 0);
+        transform.Translate(inputVec * riseSpeed * Time.deltaTime, Space.World);
     }
 
     private void MangeBuildMode()
     {
         if (Input.GetKeyDown(KeyCode.B)) {
             //toggle building 
-            bool building = !buildController.currentlyBuilding;
+            bool building = !buildController.CurrentlyBuilding;
 
             //setup cursor
             Cursor.lockState = (building) ? CursorLockMode.Confined : CursorLockMode.Locked;
             Cursor.visible = building;
 
             //set building flag
-            buildController.currentlyBuilding = building;
+            buildController.CurrentlyBuilding = building;
         }
     }
 
