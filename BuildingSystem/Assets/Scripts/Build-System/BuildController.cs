@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 public class BuildController : MonoBehaviour
 {
@@ -17,11 +19,21 @@ public class BuildController : MonoBehaviour
     public Material guideMat_Invalid;
 
     [Header("UI References")]
+    public GameObject canvasObj;
     public TMPro.TextMeshProUGUI buildingModeText;
-    public List<UI_BuildObj> buildObjButtons; 
+    public List<UI_BuildObj> buildObjButtons;
+
+    //ui raycasting
+    GraphicRaycaster UIRaycaster;
+    PointerEventData CursorEventData;
+    EventSystem CanvasEventSystem;
 
     private bool currentlyBuilding;
+
     private GameObject selectedBuildObj;
+    private Vector3 selectedBuildObjPosOffset;
+    private Vector3 currentScale = Vector3.one;
+
     private GameObject guideBuildObj;
 
 
@@ -37,6 +49,9 @@ public class BuildController : MonoBehaviour
 
     void Start()
     {
+        UIRaycaster = canvasObj.GetComponent<GraphicRaycaster>();
+        CanvasEventSystem = canvasObj.GetComponent<EventSystem>();
+
         playerCamera = GetComponentInChildren<Camera>();
         currentlyBuilding = false;
     }
@@ -47,11 +62,11 @@ public class BuildController : MonoBehaviour
             Building();
         }
 
-        if (Input.GetMouseButtonDown(0)) {
-            if(CursorWorldPos(out Vector3 pos)) {
-            }
+        if(Input.mouseScrollDelta.y != 0) {
+            currentScale += Vector3.one * Input.mouseScrollDelta.y * 2.0f * Time.deltaTime;
+            guideBuildObj.transform.localScale = currentScale;
+            selectedBuildObjPosOffset = new Vector3(0, guideBuildObj.GetComponent<Collider>().bounds.extents.y, 0);
         }
-
     }
 
     private void Building()
@@ -64,21 +79,18 @@ public class BuildController : MonoBehaviour
             return;
         }
 
-        guideBuildObj.transform.position = pointerPos;
+        guideBuildObj.transform.position = pointerPos + selectedBuildObjPosOffset;
         bool validPlacement = CheckBuildValid();
 
         //enable renderer, and set according to validity
         guideBuildObj.GetComponent<Renderer>().enabled = true;
         guideBuildObj.GetComponent<Renderer>().material = (validPlacement) ? guideMat_Valid : guideMat_Invalid;
 
-        if(Input.GetMouseButtonDown (0)) {
-
-
+        if(Input.GetMouseButtonDown (0) && validPlacement) {
+            BuildObj();
         }
 
     }
-
-
 
     private bool CheckBuildValid()
     {
@@ -91,6 +103,14 @@ public class BuildController : MonoBehaviour
         return true;
     }
 
+    private void BuildObj()
+    {
+        GameObject g = Instantiate(selectedBuildObj, guideBuildObj.transform.position, guideBuildObj.transform.rotation);
+        g.transform.localScale = guideBuildObj.transform.localScale;
+        g.layer = LayerMask.NameToLayer("building");
+    }
+
+
     /// <summary>
     /// finds world pos of where the cursor is pointing
     /// </summary>
@@ -100,12 +120,25 @@ public class BuildController : MonoBehaviour
 
         Ray ray = playerCamera.ScreenPointToRay(Input.mousePosition);
 
-        if (Physics.Raycast(ray, out RaycastHit hit, 1000.0f, placingLayerMask)) {
+        if (Physics.Raycast(ray, out RaycastHit hit, 1000.0f, placingLayerMask) && !HitUI()) {
             hitPos = hit.point;
             return true;
         }
 
         return false;   
+    }
+
+    /// <summary>
+    /// checks if the mouse is pointing over any UI elements
+    /// </summary>
+    private bool HitUI()
+    {
+        CursorEventData = new PointerEventData(CanvasEventSystem);
+        CursorEventData.position = Input.mousePosition;
+        List<RaycastResult> results = new List<RaycastResult>();
+        UIRaycaster.Raycast(CursorEventData, results);
+
+        return (results.Count > 0);
     }
 
     private void ActivateBuildMode()
@@ -120,6 +153,8 @@ public class BuildController : MonoBehaviour
 
     public void BUTTON_ChangeBuildingObject(int _index)
     {
+        Debug.Log(_index);
+
         //update button's ui to show selected, also check index valid
         if (!ManageButtonsUI(_index)) { return; }
 
@@ -133,8 +168,9 @@ public class BuildController : MonoBehaviour
 
         //find the game object from the id
         selectedBuildObj = AllBuildObjects.Find(x => x.GetComponent<BuildingObject>().obj_Id == _index);
+        guideBuildObj = Instantiate(selectedBuildObj, Vector3.zero, Quaternion.identity);
 
-        guideBuildObj = Instantiate(selectedBuildObj, Vector3.zero, Quaternion.identity);     
+        selectedBuildObjPosOffset = new Vector3(0, guideBuildObj.GetComponent<Collider>().bounds.extents.y, 0);
     }
 
     /// <summary>
@@ -147,7 +183,7 @@ public class BuildController : MonoBehaviour
         UI_BuildObj selectedBuildObjButton = null;
 
         foreach (var button in buildObjButtons) {
-            if (button.ID == _index) {
+            if (button.GetId() == _index) {
                 selectedBuildObjButton = button;
             }
             else { button.ShowUnSelected(); }
@@ -155,6 +191,7 @@ public class BuildController : MonoBehaviour
 
         //check index was valid 
         if (selectedBuildObjButton == null) {
+
             return false; 
         }
 

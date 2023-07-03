@@ -5,6 +5,10 @@ using UnityEngine.UI;
 
 public class UI_BuildObj : MonoBehaviour
 {
+    public enum ButtonType { BuildingObject = 1, None = 90, Edit = 91, Delete = 92,  }
+
+    public ButtonType buttonType;
+
     [Header("References")]
     private BuildController buildController;
     public BuildingObject buildObj;
@@ -12,19 +16,20 @@ public class UI_BuildObj : MonoBehaviour
     [Header("UI References")]
     public Image selectedImg;
 
-    public int ID { get { return (buildObj != null) ? buildObj.obj_Id : 0; } }
-
     private void Start()
     {
         //setup button on click event to call the build controller with the objects id
         buildController = FindObjectOfType<BuildController>();
 
-        if(buildObj != null) {
-            GetComponent<Button>().onClick.AddListener(delegate { buildController.BUTTON_ChangeBuildingObject(ID); });
+        GetComponent<Button>().onClick.AddListener(delegate { buildController.BUTTON_ChangeBuildingObject(GetId()); });
+    }
+
+    public int GetId()
+    {
+        if(buttonType == ButtonType.BuildingObject) {
+            return buildObj.obj_Id;
         }
-        else {
-            GetComponent<Button>().onClick.AddListener(delegate { buildController.BUTTON_ChangeBuildingObject(0); });
-        }
+        return (int)buttonType;
     }
 
 

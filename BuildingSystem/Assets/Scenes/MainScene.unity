@@ -540,6 +540,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b0dbaaa2bbc89284d8a3ff4bb9914d95, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  buttonType: 0
   buildObj: {fileID: 0}
   selectedImg: {fileID: 1646688459}
 --- !u!1 &251414729
@@ -703,7 +704,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 359201884}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 11.812866, y: 6.254425, z: -2.5497186}
+  m_LocalPosition: {x: 1.6682796, y: 18.981981, z: -30.986477}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1033,6 +1034,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b0dbaaa2bbc89284d8a3ff4bb9914d95, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  buttonType: 5
   buildObj: {fileID: 5111895507599511297, guid: 57d6b30ac6fe9a74ba9e1a0cf6666f07, type: 3}
   selectedImg: {fileID: 422381614}
 --- !u!1 &705507993
@@ -1265,6 +1267,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b0dbaaa2bbc89284d8a3ff4bb9914d95, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  buttonType: 5
   buildObj: {fileID: 3007923708398335468, guid: 196010054f17dda4c8569691cd1c66f2, type: 3}
   selectedImg: {fileID: 1092585380}
 --- !u!1 &888369345

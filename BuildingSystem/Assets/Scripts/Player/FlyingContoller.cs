@@ -18,12 +18,17 @@ public class FlyingContoller : MonoBehaviour
     private Vector3 inputVec;
     private float lookYAngle = 0.0f;
 
+    private bool lockInput;
+
     private void Start()
     {
         playerCam = GetComponentInChildren<Camera>();
-        playerCam.transform.localRotation = Quaternion.Euler(0, 0, 0);
+
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+
+        playerCam.transform.localRotation = Quaternion.Euler(0, 0, 0);
+        StartCoroutine(DelayStartupLooking());
 
         buildController = GetComponent<BuildController>();
     }
@@ -31,7 +36,7 @@ public class FlyingContoller : MonoBehaviour
     void Update()
     {
         //lock movement and looking when building
-        if (!buildController.CurrentlyBuilding) {
+        if (!buildController.CurrentlyBuilding && !lockInput) {
             Move();
             Look();
             Rise_Descend();
@@ -78,6 +83,16 @@ public class FlyingContoller : MonoBehaviour
             //set building flag
             buildController.CurrentlyBuilding = building;
         }
+    }
+
+    //ignore input for the first five frames, prevents look direction bugs
+    IEnumerator DelayStartupLooking()
+    {
+        lockInput = true;
+        for (int i = 0; i < 5; i++) {
+            yield return new WaitForEndOfFrame();
+        }
+        lockInput = false;
     }
 
 }
