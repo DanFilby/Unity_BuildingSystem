@@ -12,8 +12,9 @@ public class FlyingContoller : MonoBehaviour
     private Camera playerCam;
     private BuildController buildController;
 
-    //use this vec to store temp inputs, saving inits 
+    //use this vec to store temp inputs
     private Vector3 inputVec;
+    private float lookYAngle = 0.0f;
 
     private void Start()
     {
@@ -26,10 +27,11 @@ public class FlyingContoller : MonoBehaviour
 
     void Update()
     {
-        Move();
-
-        //lock rotation when building
-        if (!buildController.currentlyBuilding) { Look(); }
+        //lock movement and looking when building
+        if (!buildController.currentlyBuilding) {
+            Move();
+            Look();
+        }
 
         MangeBuildMode();
     }
@@ -42,10 +44,8 @@ public class FlyingContoller : MonoBehaviour
         transform.Rotate(Vector3.up, inputVec.x * lookSensitivity.x * Time.deltaTime);
 
         //look up and down through the camera
-        float upAngle = playerCam.transform.eulerAngles.x + inputVec.y * lookSensitivity.y * Time.deltaTime;
-        upAngle = Mathf.Clamp(upAngle, 0, 80);
-
-        playerCam.transform.rotation = Quaternion.Euler(upAngle, 0, 0);
+        lookYAngle = Mathf.Clamp(lookYAngle + inputVec.y * lookSensitivity.y * Time.deltaTime, -25, 85);
+        playerCam.transform.localRotation = Quaternion.Euler(lookYAngle, 0, 0) ;
     }
 
     private void Move()

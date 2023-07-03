@@ -231,6 +231,7 @@ GameObject:
   m_Component:
   - component: {fileID: 359201885}
   - component: {fileID: 359201886}
+  - component: {fileID: 359201887}
   m_Layer: 0
   m_Name: Player controller
   m_TagString: Untagged
@@ -267,7 +268,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   speed: 10
-  lookSensitivity: 0
+  lookSensitivity: {x: 500, y: 500}
+--- !u!114 &359201887
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 359201884}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 241bddea1091999429e81513deb46737, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  currentlyBuilding: 0
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
