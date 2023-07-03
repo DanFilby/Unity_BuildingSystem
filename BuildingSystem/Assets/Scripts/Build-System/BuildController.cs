@@ -7,15 +7,23 @@ public class BuildController : MonoBehaviour
     [Header("Building Settings")]
     public LayerMask buildingLayerMask;
 
-    public GameObject debugPrefab;
-
     [Header("References")]
-    public TMPro.TextMeshProUGUI buildingModeText;
-    public List<UI_BuildObj> buildObjButtons;
     private Camera playerCamera;
+    public List<GameObject> AllBuildObjects;
+
+    //materials to show whether the player can place the obj at its current pos
+    public Material guideMat_Valid;
+    public Material guideMat_Invalid;
+
+    [Header("UI References")]
+    public TMPro.TextMeshProUGUI buildingModeText;
+    public List<UI_BuildObj> buildObjButtons; 
 
     private bool currentlyBuilding;
-    
+    private GameObject selectedBuildObj;
+    private GameObject guideBuildObj;
+
+
     public bool CurrentlyBuilding
     {
         get { return currentlyBuilding; }
@@ -36,7 +44,6 @@ public class BuildController : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0)) {
             if(CursorWorldPos(out Vector3 pos)) {
-                Instantiate(debugPrefab, pos, Quaternion.identity); 
             }
         }
 
@@ -70,17 +77,54 @@ public class BuildController : MonoBehaviour
 
     public void BUTTON_ChangeBuildingObject(int _index)
     {
-        UI_BuildObj selectedBuildObj = null;
-        foreach (var button in buildObjButtons)
-        {
-            if (button.index == _index) {
-                selectedBuildObj = button;
-            }
-            else { button.UnSelect(); }
+        //update button's ui to show selected, also check index valid
+        if (!ManageButtonsUI(_index)) { return; }
+
+        ClearCurrentSelectedObjs();
+
+        //'none' button selected
+        if (_index == 0) {
+            return;
         }
-        selectedBuildObj.Select();
 
+        //find the game object from the id
+        selectedBuildObj = AllBuildObjects.Find(x => x.GetComponent<BuildingObject>().obj_Id == _index);
 
+        guideBuildObj = Instantiate(selectedBuildObj, Vector3.zero, Quaternion.identity);
+        
     }
+
+    private bool ManageButtonsUI(int _index)
+    {
+        //update the buttons ui to show the one clicked as selected
+        UI_BuildObj selectedBuildObjButton = null;
+
+        foreach (var button in buildObjButtons) {
+            if (button.ID == _index) {
+                selectedBuildObjButton = button;
+            }
+            else { button.ShowUnSelected(); }
+        }
+
+        //check index was valid 
+        if (selectedBuildObjButton == null) {
+            return false; 
+        }
+
+        selectedBuildObjButton.ShowSelected();
+        return true;
+    }
+
+    private void ClearCurrentSelectedObjs()
+    {
+        selectedBuildObj = null;
+
+        if(guideBuildObj != null) {
+            Destroy(guideBuildObj);
+            guideBuildObj = null;
+        }
+    }
+
+
 
 }
