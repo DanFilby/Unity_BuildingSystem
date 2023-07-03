@@ -6,6 +6,8 @@ using UnityEngine;
 public class BuildingObject : MonoBehaviour
 {
     public int obj_Id;
+    public float Radius;
+
 
     void Start()
     {

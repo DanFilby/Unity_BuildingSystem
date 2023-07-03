@@ -1,8 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using static UI_BuildObj;
 
 public class BuildController : MonoBehaviour
 {
@@ -32,7 +34,9 @@ public class BuildController : MonoBehaviour
 
     private GameObject selectedBuildObj;
     private Vector3 selectedBuildObjPosOffset;
+
     private Vector3 currentScale = Vector3.one;
+    private Vector3 currentRotOffset = Vector3.zero;
 
     private GameObject guideBuildObj;
 
@@ -59,14 +63,32 @@ public class BuildController : MonoBehaviour
     void Update()
     {
         if(currentlyBuilding && guideBuildObj != null) {
+            ManageBuildPlacing();
             Building();
         }
+        
+    }
 
-        if(Input.mouseScrollDelta.y != 0) {
+    private void ManageBuildPlacing()
+    {
+        //edit scale
+        if (Input.mouseScrollDelta.y != 0) {
             currentScale += Vector3.one * Input.mouseScrollDelta.y * 2.0f * Time.deltaTime;
             guideBuildObj.transform.localScale = currentScale;
             selectedBuildObjPosOffset = new Vector3(0, guideBuildObj.GetComponent<Collider>().bounds.extents.y, 0);
         }
+
+        //edit rotation
+        if (Input.GetKeyDown(KeyCode.E)) {
+            currentRotOffset.y += 45;
+            guideBuildObj.transform.localEulerAngles = currentRotOffset;
+        }
+        if (Input.GetKeyDown(KeyCode.Q)) {
+            currentRotOffset.y += -45;
+            guideBuildObj.transform.localEulerAngles = currentRotOffset;
+        }
+
+
     }
 
     private void Building()
@@ -78,8 +100,10 @@ public class BuildController : MonoBehaviour
             guideBuildObj.GetComponent<Renderer>().enabled = false;
             return;
         }
-
         guideBuildObj.transform.position = pointerPos + selectedBuildObjPosOffset;
+
+        SnapToNearbyBuildings(ref pointerPos);
+
         bool validPlacement = CheckBuildValid();
 
         //enable renderer, and set according to validity
@@ -91,12 +115,49 @@ public class BuildController : MonoBehaviour
         }
 
     }
+    //TODO: snapping roation and scale, save rotaion and use all dimensions in scale   
+
+    private void SnapToNearbyBuildings(ref Vector3 worldPos)
+    {
+        //check for nearby buildings close to the cursor 
+        Collider[] nearbyBuildings = Physics.OverlapBox(worldPos, guideBuildObj.GetComponent<Collider>().bounds.extents * 4.0f,
+            guideBuildObj.transform.rotation, buildingLayerMask);
+
+        if(nearbyBuildings.Length > 0) {
+            //find the closest building near the cursor pointer
+            Collider closestBuilding = FindClosestCollider(worldPos, nearbyBuildings);
+
+            //calculate the angle between both points
+            Vector3 offset = closestBuilding.transform.position - worldPos;
+            float angle = (Mathf.Atan2(offset.z, offset.x)) * Mathf.Rad2Deg + 180;
+
+            //set the world position as the nearby building
+            worldPos = closestBuilding.transform.position;
+
+            //add offset in each direction using the angle calculated
+            if (angle >= 135 && angle <= 225) {
+                worldPos.x -= closestBuilding.GetComponent<BuildingObject>().Radius + selectedBuildObjPosOffset.y;
+            }
+            else if ((angle >= 0 && angle <= 45) || (angle > 305 && angle < 360)) {
+                worldPos.x += closestBuilding.GetComponent<BuildingObject>().Radius + selectedBuildObjPosOffset.y;
+            }
+            else if (angle >= 45 && angle <= 135) {
+                worldPos.z += closestBuilding.GetComponent<BuildingObject>().Radius + selectedBuildObjPosOffset.y;
+            }
+            else if (angle >= 225 && angle <= 305) {
+                worldPos.z -= closestBuilding.GetComponent<BuildingObject>().Radius + selectedBuildObjPosOffset.y;
+            }
+
+            //update guide object's positon
+            guideBuildObj.transform.position = worldPos;
+        }
+    }
 
     private bool CheckBuildValid()
     {
-        Bounds colliderBounds = guideBuildObj.GetComponent<Collider>().bounds;
+        Bounds colliderBounds = guideBuildObj.GetComponent<Collider>().bounds ;
 
-        if(Physics.CheckBox(colliderBounds.center, colliderBounds.extents, guideBuildObj.transform.rotation, buildingLayerMask)) {
+        if(Physics.CheckBox(colliderBounds.center, colliderBounds.extents - Vector3.one * 0.01f, guideBuildObj.transform.rotation, buildingLayerMask)) {
             return false;
         }
 
@@ -108,6 +169,7 @@ public class BuildController : MonoBehaviour
         GameObject g = Instantiate(selectedBuildObj, guideBuildObj.transform.position, guideBuildObj.transform.rotation);
         g.transform.localScale = guideBuildObj.transform.localScale;
         g.layer = LayerMask.NameToLayer("building");
+        g.GetComponent<BuildingObject>().Radius = selectedBuildObjPosOffset.y;
     }
 
 
@@ -162,7 +224,8 @@ public class BuildController : MonoBehaviour
         ClearCurrentSelectedObjs();
 
         //'none' button selected
-        if (_index == 0) {
+        if (_index == (int)ButtonType.None || _index == (int)ButtonType.Edit || _index == (int)ButtonType.Delete) {
+            ClearBuildingAdjustments();
             return;
         }
 
@@ -209,6 +272,23 @@ public class BuildController : MonoBehaviour
         }
     }
 
+    private void ClearBuildingAdjustments()
+    {
+        currentRotOffset = Vector3.zero;
+        currentScale = Vector3.one;
+    }
 
+    Collider FindClosestCollider(Vector3 worldPos, Collider[] nearbyBuildings)
+    {
+        Collider closestBuilding = null; float closestDist = Mathf.Infinity;
+        foreach (var c in nearbyBuildings) {
+            float dist = Vector3.Distance(worldPos, c.transform.position);
+            if (dist < closestDist) {
+                closestDist = dist;
+                closestBuilding = c;
+            }
+        }
+        return closestBuilding;
+    }
 
 }
