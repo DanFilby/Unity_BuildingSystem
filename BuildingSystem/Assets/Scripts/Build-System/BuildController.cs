@@ -5,6 +5,7 @@ using UnityEngine;
 public class BuildController : MonoBehaviour
 {
     [Header("Building Settings")]
+    public LayerMask placingLayerMask;
     public LayerMask buildingLayerMask;
 
     [Header("References")]
@@ -42,6 +43,10 @@ public class BuildController : MonoBehaviour
 
     void Update()
     {
+        if(currentlyBuilding && guideBuildObj != null) {
+            Building();
+        }
+
         if (Input.GetMouseButtonDown(0)) {
             if(CursorWorldPos(out Vector3 pos)) {
             }
@@ -49,13 +54,53 @@ public class BuildController : MonoBehaviour
 
     }
 
+    private void Building()
+    {
+        Vector3 pointerPos;
+
+        if (!CursorWorldPos(out pointerPos)) {
+            //pointing ray doesn't hit valid building surface
+            guideBuildObj.GetComponent<Renderer>().enabled = false;
+            return;
+        }
+
+        guideBuildObj.transform.position = pointerPos;
+        bool validPlacement = CheckBuildValid();
+
+        //enable renderer, and set according to validity
+        guideBuildObj.GetComponent<Renderer>().enabled = true;
+        guideBuildObj.GetComponent<Renderer>().material = (validPlacement) ? guideMat_Valid : guideMat_Invalid;
+
+        if(Input.GetMouseButtonDown (0)) {
+
+
+        }
+
+    }
+
+
+
+    private bool CheckBuildValid()
+    {
+        Bounds colliderBounds = guideBuildObj.GetComponent<Collider>().bounds;
+
+        if(Physics.CheckBox(colliderBounds.center, colliderBounds.extents, guideBuildObj.transform.rotation, buildingLayerMask)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// finds world pos of where the cursor is pointing
+    /// </summary>
     public bool CursorWorldPos(out Vector3 hitPos)
     {
         hitPos = Vector3.zero; 
 
         Ray ray = playerCamera.ScreenPointToRay(Input.mousePosition);
 
-        if (Physics.Raycast(ray, out RaycastHit hit, buildingLayerMask)) {
+        if (Physics.Raycast(ray, out RaycastHit hit, 1000.0f, placingLayerMask)) {
             hitPos = hit.point;
             return true;
         }
@@ -66,13 +111,11 @@ public class BuildController : MonoBehaviour
     private void ActivateBuildMode()
     {
         buildingModeText.text = "Building";
-
     }
 
     private void DisableBuildMode()
     {
         buildingModeText.text = "Viewing";
-
     }
 
     public void BUTTON_ChangeBuildingObject(int _index)
@@ -80,6 +123,7 @@ public class BuildController : MonoBehaviour
         //update button's ui to show selected, also check index valid
         if (!ManageButtonsUI(_index)) { return; }
 
+        //destroys previous guide objects
         ClearCurrentSelectedObjs();
 
         //'none' button selected
@@ -90,10 +134,13 @@ public class BuildController : MonoBehaviour
         //find the game object from the id
         selectedBuildObj = AllBuildObjects.Find(x => x.GetComponent<BuildingObject>().obj_Id == _index);
 
-        guideBuildObj = Instantiate(selectedBuildObj, Vector3.zero, Quaternion.identity);
-        
+        guideBuildObj = Instantiate(selectedBuildObj, Vector3.zero, Quaternion.identity);     
     }
 
+    /// <summary>
+    /// updates the button's ui to show the one selected, as well as checking for a valid index
+    /// </summary>
+    /// <returns> true if given index is valid </returns>
     private bool ManageButtonsUI(int _index)
     {
         //update the buttons ui to show the one clicked as selected
