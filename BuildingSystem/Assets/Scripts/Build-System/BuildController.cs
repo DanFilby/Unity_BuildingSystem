@@ -1,3 +1,5 @@
+using Newtonsoft.Json.Linq;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +11,8 @@ using static UI_BuildObj;
 
 public class BuildController : MonoBehaviour
 {
+    enum BuildState { none, edit, destroy, building}
+
     [Header("Building Settings")]
     public LayerMask placingLayerMask;
     public LayerMask buildingLayerMask;
@@ -20,6 +24,7 @@ public class BuildController : MonoBehaviour
     //materials to show whether the player can place the obj at its current pos
     public Material guideMat_Valid;
     public Material guideMat_Invalid;
+    public Material regularBuildObjMat;
 
     [Header("UI References")]
     public GameObject canvasObj;
@@ -31,23 +36,31 @@ public class BuildController : MonoBehaviour
     PointerEventData CursorEventData;
     EventSystem CanvasEventSystem;
 
-    private bool currentlyBuilding;
+    //controller flags
+    private bool controllerActive;
+    private BuildState curBuildState;
 
+    //selected building object prefab and bounds
     private GameObject selectedBuildObj;
     private Vector3 selectedBuildObjBoundsExtent;
 
+    //settings for current building object
     private Vector3 currentScale = Vector3.one;
     private Vector3 currentRotOffset = Vector3.zero;
 
+    //actual object used to show where the new build will be
     private GameObject guideBuildObj;
 
+    //editing building variables
+    private GameObject currentEditHoverObj;
+    private bool currentlyEditingObj;
 
     public bool CurrentlyBuilding
     {
-        get { return currentlyBuilding; }
-        set { currentlyBuilding = value;    //set as usual then call either activate or disable funcs
-            if (currentlyBuilding) { ActivateBuildMode(); }
-            else { DisableBuildMode(); }
+        get { return controllerActive; }
+        set { controllerActive = value;    //set as usual then call either activate or disable funcs
+            if (controllerActive) { ActivateController(); }
+            else { DisableController(); }
         }
     }
 
@@ -58,19 +71,27 @@ public class BuildController : MonoBehaviour
         CanvasEventSystem = canvasObj.GetComponent<EventSystem>();
 
         playerCamera = GetComponentInChildren<Camera>();
-        currentlyBuilding = false;
+        controllerActive = false;
     }
 
     void Update()
     {
-        if(currentlyBuilding && guideBuildObj != null) {
-            ManageBuildPlacing();
-            Building();
+        if(controllerActive) {
+            if(curBuildState == BuildState.building && guideBuildObj != null) {
+                AdjustBuildObject();
+                Building();
+            }
+            if(curBuildState == BuildState.edit) {
+                Editing();
+            }
+            if(curBuildState == BuildState.destroy) {
+                Destroying();
+            }        
         }
         
     }
 
-    private void ManageBuildPlacing()
+    private void AdjustBuildObject()
     {
         //edit scale from scroll wheel
         if (Input.mouseScrollDelta.y != 0) {
@@ -111,13 +132,52 @@ public class BuildController : MonoBehaviour
         guideBuildObj.GetComponent<Renderer>().material = (validPlacement) ? guideMat_Valid : guideMat_Invalid;
 
         if(Input.GetMouseButtonDown (0) && validPlacement) {
-            BuildObj();
+
+            if (currentlyEditingObj) {
+                BuildEditingObj();
+            }
+            else {
+                BuildObj();
+            }
         }
 
     }
 
-    //TODO: snapping roation
 
+    private void Editing()
+    {
+        if (PointingAtBuilding(out GameObject buildingHit, out _)) {
+            //reset material of previous hover obj
+            if(currentEditHoverObj != buildingHit && currentEditHoverObj != null) { currentEditHoverObj.GetComponent<Renderer>().material = regularBuildObjMat; }
+
+            buildingHit.GetComponent<Renderer>().material = guideMat_Valid;
+            currentEditHoverObj = buildingHit;
+
+            if (Input.GetMouseButtonDown(0) && !currentlyEditingObj) {
+                guideBuildObj = currentEditHoverObj;
+                curBuildState = BuildState.building;
+                currentScale = guideBuildObj.transform.localScale;
+                selectedBuildObjBoundsExtent = guideBuildObj.GetComponent<BuildingObject>().BoundsExtent;
+                selectedBuildObj = guideBuildObj;
+                guideBuildObj.layer = 8;
+                currentlyEditingObj = true;
+            }
+
+        }
+        //reset the colour 
+        else if (currentEditHoverObj != null) {
+            currentEditHoverObj.GetComponent<Renderer>().material = regularBuildObjMat;
+            currentEditHoverObj = null;
+        }
+
+    }
+
+    private void Destroying()
+    {
+
+    }
+
+    //TODO: snapping roation
     private void SnapToNearbyBuildings(ref Vector3 worldPos)
     {
         //check for nearby buildings close to the cursor 
@@ -128,6 +188,7 @@ public class BuildController : MonoBehaviour
             //find the closest building near the cursor pointer
             Collider closestBuilding = FindClosestCollider(worldPos, nearbyBuildings);
 
+            //first test whether object should be placed above an exsisting one
             if(PointingAtBuilding(out _, out RaycastHit hitInfo) && CheckBuildAbove(hitInfo.normal)) {
                 worldPos = closestBuilding.transform.position;
                 worldPos.y += closestBuilding.GetComponent<BuildingObject>().BoundsExtent.y + selectedBuildObjBoundsExtent.y;
@@ -185,6 +246,20 @@ public class BuildController : MonoBehaviour
         g.GetComponent<BuildingObject>().rotationalOffset = currentRotOffset;
     }
 
+    private void BuildEditingObj()
+    {
+        GameObject g = Instantiate(guideBuildObj, guideBuildObj.transform.position, guideBuildObj.transform.rotation);
+        g.transform.localScale = guideBuildObj.transform.localScale;
+        g.layer = LayerMask.NameToLayer("building");
+        g.GetComponent<BuildingObject>().BoundsExtent = selectedBuildObjBoundsExtent;
+        g.GetComponent<BuildingObject>().rotationalOffset = currentRotOffset;
+        g.GetComponent<Renderer>().material = regularBuildObjMat;
+
+        ClearCurrentSelectedObjs();
+        curBuildState = BuildState.edit;
+        StartCoroutine(DelayChangeEditBool());
+    }
+
 
     /// <summary>
     /// finds world pos of where the cursor is pointing
@@ -239,14 +314,16 @@ public class BuildController : MonoBehaviour
         return (results.Count > 0);
     }
 
-    private void ActivateBuildMode()
+    private void ActivateController()
     {
         buildingModeText.text = "Building";
+        curBuildState = BuildState.building;
     }
 
-    private void DisableBuildMode()
+    private void DisableController()
     {
         buildingModeText.text = "Viewing";
+        curBuildState = BuildState.none;
     }
 
     public void BUTTON_ChangeBuildingObject(int _index)
@@ -257,17 +334,34 @@ public class BuildController : MonoBehaviour
         //destroys previous guide objects
         ClearCurrentSelectedObjs();
 
-        //'none' button selected
-        if (_index == (int)ButtonType.None || _index == (int)ButtonType.Edit || _index == (int)ButtonType.Delete) {
-            ClearBuildingAdjustments();
+        //a none build object button selected (none, edit, destory)
+        if (_index != (int)ButtonType.BuildingObject && Enum.IsDefined(typeof(ButtonType), _index)) {
+            AlternateBuildSettings(_index);
             return;
         }
+
+        curBuildState = BuildState.building;
 
         //find the game object from the id
         selectedBuildObj = AllBuildObjects.Find(x => x.GetComponent<BuildingObject>().obj_Id == _index);
         guideBuildObj = Instantiate(selectedBuildObj, Vector3.zero, Quaternion.identity);
 
         selectedBuildObjBoundsExtent = guideBuildObj.GetComponent<Collider>().bounds.extents;
+    }
+
+    private void AlternateBuildSettings(int _index)
+    {
+        ClearBuildingAdjustments();
+
+        if(_index == (int)ButtonType.None) {
+            curBuildState = BuildState.none;
+        }
+        else if (_index == (int)ButtonType.Edit) {
+            curBuildState = BuildState.edit;
+        }
+        else if (_index == (int)ButtonType.Delete) {
+            curBuildState = BuildState.destroy;
+        }
     }
 
     /// <summary>
@@ -323,6 +417,14 @@ public class BuildController : MonoBehaviour
             }
         }
         return closestBuilding;
+    }
+
+    IEnumerator DelayChangeEditBool()
+    {
+        for (int i = 0; i < 3; i++) {
+            yield return new WaitForEndOfFrame();
+        }
+        currentlyEditingObj = false;
     }
 
 }

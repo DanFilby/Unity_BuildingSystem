@@ -1082,6 +1082,7 @@ MonoBehaviour:
   - {fileID: 6204466984102266237, guid: 486ae1c77e1159e4a8e11c4808a9bc85, type: 3}
   guideMat_Valid: {fileID: 2100000, guid: a89c7ffe21b43b04cb719a25e19c23e5, type: 2}
   guideMat_Invalid: {fileID: 2100000, guid: 70a1dd19f5ac4064085462c1dc041b8c, type: 2}
+  regularBuildObjMat: {fileID: 2100000, guid: 3ea11b5810385924896cce912ad871f1, type: 2}
   canvasObj: {fileID: 32304018}
   buildingModeText: {fileID: 1572096949}
   buildObjButtons:
@@ -3937,6 +3938,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7058031289676458214, guid: 57d6b30ac6fe9a74ba9e1a0cf6666f07, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 3ea11b5810385924896cce912ad871f1, type: 2}
     - target: {fileID: 7817698494559565579, guid: 57d6b30ac6fe9a74ba9e1a0cf6666f07, type: 3}
       propertyPath: m_Name
       value: Sphere - BuildObj
@@ -4029,7 +4034,7 @@ PrefabInstance:
     - target: {fileID: 1097145526842928579, guid: 196010054f17dda4c8569691cd1c66f2, type: 3}
       propertyPath: m_Materials.Array.data[0]
       value: 
-      objectReference: {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
+      objectReference: {fileID: 2100000, guid: 3ea11b5810385924896cce912ad871f1, type: 2}
     - target: {fileID: 2064045335426691502, guid: 196010054f17dda4c8569691cd1c66f2, type: 3}
       propertyPath: m_RootOrder
       value: 5
@@ -4196,3 +4201,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   obj_Id: 1
+  BoundsExtent: {x: 0, y: 0, z: 0}
+  rotationalOffset: {x: 0, y: 0, z: 0}
