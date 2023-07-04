@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.ConstrainedExecution;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -11,15 +12,17 @@ using static UI_BuildObj;
 
 public class BuildController : MonoBehaviour
 {
-    enum BuildState { none, edit, destroy, building}
+    enum BuildState { none, edit, destroy, building, wallBuilding}
 
     [Header("Building Settings")]
     public LayerMask placingLayerMask;
     public LayerMask buildingLayerMask;
+    public LayerMask snappingLayerMask;
 
     [Header("References")]
     private Camera playerCamera;
     public List<GameObject> AllBuildObjects;
+    public CastleBuilding castleBuilder;
 
     //materials to show whether the player can place the obj at its current pos
     public Material guideMat_Valid;
@@ -51,12 +54,16 @@ public class BuildController : MonoBehaviour
     //actual object used to show where the new build will be
     private GameObject guideBuildObj;
 
-    //editing building variables
+    //editing building
     private GameObject currentEditHoverObj;
     private bool currentlyEditingObj;
 
-    //destroying building variables
+    //destroying building
     private GameObject currentDestroyHoverObj;
+
+    //wall buidling
+    private bool placedFirstTower = false;
+    private Vector3 firstTowerPos;
 
     public bool CurrentlyBuilding
     {
@@ -84,10 +91,14 @@ public class BuildController : MonoBehaviour
                 AdjustBuildObject();
                 Building();
             }
-            if(curBuildState == BuildState.edit) {
+            else if(curBuildState == BuildState.wallBuilding) {
+                AdjustWallBuilding();
+                WallBuilding();
+            }
+            else if(curBuildState == BuildState.edit) {
                 Editing();
             }
-            if(curBuildState == BuildState.destroy) {
+            else if(curBuildState == BuildState.destroy) {
                 Destroying();
             }        
         }
@@ -146,6 +157,79 @@ public class BuildController : MonoBehaviour
 
     }
 
+    private void AdjustWallBuilding()
+    {
+        //edit scale from scroll wheel
+        if (Input.mouseScrollDelta.y != 0) {
+            currentScale += Vector3.one * Input.mouseScrollDelta.y * 2.0f * Time.deltaTime;
+
+            if (guideBuildObj != null) { Destroy(guideBuildObj); }
+            guideBuildObj = castleBuilder.CreateWall(Vector3.zero, currentScale.x);
+            selectedBuildObjBoundsExtent = guideBuildObj.GetComponent<Collider>().bounds.extents;
+        }
+    }
+
+    private bool CheckWallValid()
+    {
+        Bounds colliderBounds = guideBuildObj.GetComponent<Collider>().bounds;
+
+        if (Physics.CheckBox(colliderBounds.center, colliderBounds.extents - Vector3.one * 0.01f,
+            guideBuildObj.transform.rotation, buildingLayerMask)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private void WallBuilding()
+    {
+        Vector3 pointerPos;
+        if (!CursorWorldPos(out pointerPos)) {
+            //pointing ray doesn't hit valid building surface
+            guideBuildObj.GetComponent<Renderer>().enabled = false;
+            return;
+        }
+
+        //once the first tower is placed, show how the finished wall would be built with the guide object
+        if (placedFirstTower) {
+            if (guideBuildObj != null) { Destroy(guideBuildObj); }
+            guideBuildObj = castleBuilder.CreateWall(firstTowerPos, pointerPos, currentScale.y);
+            guideBuildObj.transform.position += Vector3.up * guideBuildObj.GetComponent<Collider>().bounds.extents.y * currentScale.y;
+        }
+        else {
+            guideBuildObj.transform.position = pointerPos + selectedBuildObjBoundsExtent * currentScale.y;
+        }
+
+        //TODO: Fix valid check
+        //bool validPlacement = CheckWallValid();
+        bool validPlacement = true;
+
+        //enable renderer, and set according to validity
+        guideBuildObj.GetComponent<Renderer>().enabled = true;
+        guideBuildObj.GetComponent<Renderer>().material = (validPlacement) ? guideMat_Valid : guideMat_Invalid;
+
+        if (Input.GetMouseButtonDown(0) && validPlacement) {
+            //place the wall's starting point
+            if(placedFirstTower == false) {
+                firstTowerPos = pointerPos;
+                placedFirstTower = true;
+            }
+            //build the full wall
+            else if(placedFirstTower == true) {
+                Destroy(guideBuildObj);
+                GameObject g = castleBuilder.CreateWall(firstTowerPos, pointerPos, currentScale.y);
+
+                guideBuildObj.GetComponent<Renderer>().material = regularBuildObjMat;
+                g.transform.position += Vector3.up * guideBuildObj.GetComponent<Collider>().bounds.extents.y * currentScale.y;
+                g.layer = 9;
+
+                //reset guide to single wall
+                guideBuildObj = castleBuilder.CreateWall(Vector3.zero, currentScale.x);
+                selectedBuildObjBoundsExtent = guideBuildObj.GetComponent<Collider>().bounds.extents;
+                placedFirstTower = false;
+            }
+        }
+    }
 
     private void Editing()
     {
@@ -202,7 +286,7 @@ public class BuildController : MonoBehaviour
     {
         //check for nearby buildings close to the cursor 
         Collider[] nearbyBuildings = Physics.OverlapBox(worldPos, Vector3.one * 2.0f,
-            guideBuildObj.transform.rotation, buildingLayerMask);
+            guideBuildObj.transform.rotation, snappingLayerMask);
 
         if(nearbyBuildings.Length > 0) {
             //find the closest building near the cursor pointer
@@ -251,7 +335,8 @@ public class BuildController : MonoBehaviour
     {
         Bounds colliderBounds = guideBuildObj.GetComponent<Collider>().bounds ;
 
-        if(Physics.CheckBox(colliderBounds.center, colliderBounds.extents - Vector3.one * 0.01f, guideBuildObj.transform.rotation, buildingLayerMask)) {
+        if(Physics.CheckBox(colliderBounds.center, colliderBounds.extents - Vector3.one * 0.01f,
+            guideBuildObj.transform.rotation, buildingLayerMask)) {
             return false;
         }
 
@@ -345,6 +430,7 @@ public class BuildController : MonoBehaviour
     {
         buildingModeText.text = "Viewing";
         curBuildState = BuildState.none;
+        if (guideBuildObj != null) { Destroy(guideBuildObj); }
     }
 
     public void BUTTON_ChangeBuildingObject(int _index)
@@ -382,6 +468,12 @@ public class BuildController : MonoBehaviour
         }
         else if (_index == (int)ButtonType.Delete) {
             curBuildState = BuildState.destroy;
+        }
+        else if (_index == (int)ButtonType.CastleWall) {
+            curBuildState = BuildState.wallBuilding;
+            guideBuildObj = castleBuilder.CreateWall(Vector3.zero, 1.0f); ;
+            selectedBuildObjBoundsExtent = guideBuildObj.GetComponent<Collider>().bounds.extents;
+            return;
         }
     }
 

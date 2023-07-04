@@ -1,47 +1,65 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Net;
 using UnityEngine;
 
 public class CastleBuilding : MonoBehaviour
 {
     public float wallWidth = 2.0f;
+    public float wallHeight = 5.0f;
     public Material wallMaterial;
-
 
     private List<Vector3> vertices;
     private List<int> triangles;
     private MeshFilter meshFilter;
 
 
-
     void Start()
     {
-        vertices = new List<Vector3>();
-        triangles = new List<int>();
-
         meshFilter = GetComponent<MeshFilter>();
 
-        CreateWall(new Vector3(0, 0, 0), new Vector3(-10, 0, -25));
-
+        //CreateWall(new Vector3(0, 0, 0), new Vector3(-10, 0, -25), 1.0f);
     }
 
-    public void CreateWall(Vector3 startPoint, Vector3 endPoint)
+    public GameObject CreateWall(Vector3 position, float scale)
     {
         //setup game object
-        GameObject wallObj = new GameObject();
+        GameObject wallObj = new GameObject("Castle Wall");
         MeshFilter mfilter = wallObj.AddComponent<MeshFilter>();
         wallObj.AddComponent<MeshRenderer>().material = wallMaterial;
+        wallObj.layer = 8;
+
+        //generate mesh for the wall
+        mfilter.mesh = CreateWallMesh(0);
+        wallObj.AddComponent<MeshCollider>();
+
+        wallObj.transform.localScale = new Vector3(scale, scale, 1);
+
+        return wallObj;
+    }
+
+    public GameObject CreateWall(Vector3 startPoint, Vector3 endPoint, float scale)
+    {
+        //setup game object
+        GameObject wallObj = new GameObject("Castle Wall" + (Random.value * 1000).ToString());
+        MeshFilter mfilter = wallObj.AddComponent<MeshFilter>();
+        wallObj.AddComponent<MeshRenderer>().material = wallMaterial;
+        wallObj.layer = 8;
 
         //generate mesh for the wall
         float wallLength = Vector3.Distance(startPoint, endPoint);
         mfilter.mesh = CreateWallMesh(wallLength);
 
-        wallObj.AddComponent<BoxCollider>();
+        wallObj.AddComponent<MeshCollider>();
 
         Vector3 offset = startPoint - endPoint;
         float angle = (Mathf.Atan2(offset.x, offset.z)) * Mathf.Rad2Deg + 180;
 
+        wallObj.transform.position = startPoint;
         wallObj.transform.localRotation = Quaternion.Euler(0, angle , 0);
+        wallObj.transform.localScale = new Vector3(scale, scale, 1);
+
+        return wallObj;
     }
 
     private Mesh CreateWallMesh(float wallLength)
@@ -51,8 +69,11 @@ public class CastleBuilding : MonoBehaviour
 
     private Mesh CreateWallMesh(Vector3 lengthMultiplier)
     {
+        vertices = new List<Vector3>();
+        triangles = new List<int>();
+
         float xMultiplier = wallWidth + lengthMultiplier.x;
-        float yMultiplier = 5.0f + lengthMultiplier.y;
+        float yMultiplier = wallHeight + lengthMultiplier.y;
         float zMultiplier = wallWidth + lengthMultiplier.z;
 
         //unit cube vertices and triangles
@@ -72,8 +93,9 @@ public class CastleBuilding : MonoBehaviour
         });
 
         //centre the mesh 
+        Vector3 centering = new Vector3(wallWidth / 2.0f, wallHeight / 2.0f, wallWidth / 2.0f);
         for (int i = 0; i < vertices.Count; i++) {
-            vertices[i] -= Vector3.one * (wallWidth / 2.0f);
+            vertices[i] -= centering;
         }
 
         Mesh mesh = new Mesh();

@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 public class UI_BuildObj : MonoBehaviour
 {
-    public enum ButtonType { BuildingObject = 1, None = 90, Edit = 91, Delete = 92,  }
+    public enum ButtonType { BuildingObject = 1, CastleWall = 20, None = 90, Edit = 91, Delete = 92,  }
 
     public ButtonType buttonType;
 
@@ -20,6 +20,7 @@ public class UI_BuildObj : MonoBehaviour
     {
         //setup button on click event to call the build controller with the objects id
         buildController = FindObjectOfType<BuildController>();
+        Debug.Log("Made it");
 
         GetComponent<Button>().onClick.AddListener(delegate { buildController.BUTTON_ChangeBuildingObject(GetId()); });
     }
