@@ -55,6 +55,9 @@ public class BuildController : MonoBehaviour
     private GameObject currentEditHoverObj;
     private bool currentlyEditingObj;
 
+    //destroying building variables
+    private GameObject currentDestroyHoverObj;
+
     public bool CurrentlyBuilding
     {
         get { return controllerActive; }
@@ -174,7 +177,24 @@ public class BuildController : MonoBehaviour
 
     private void Destroying()
     {
+        if (PointingAtBuilding(out GameObject buildingHit, out _)) {
+            //reset material of previous hover obj
+            if (currentDestroyHoverObj != buildingHit && currentDestroyHoverObj != null) { currentDestroyHoverObj.GetComponent<Renderer>().material = regularBuildObjMat; }
 
+            buildingHit.GetComponent<Renderer>().material = guideMat_Invalid;
+            currentDestroyHoverObj = buildingHit;
+
+            if (Input.GetMouseButtonDown(0) && !currentlyEditingObj) {
+                Destroy(buildingHit);
+                currentDestroyHoverObj = null;
+            }
+
+        }
+        //reset the colour 
+        else if (currentDestroyHoverObj != null) {
+            currentDestroyHoverObj.GetComponent<Renderer>().material = regularBuildObjMat;
+            currentDestroyHoverObj = null;
+        }
     }
 
     //TODO: snapping roation
