@@ -6,8 +6,8 @@ using UnityEngine;
 public class BuildingObject : MonoBehaviour
 {
     public int obj_Id;
-    public float Radius;
-
+    public Vector3 BoundsExtent;
+    public Vector3 rotationalOffset;
 
     void Start()
     {
