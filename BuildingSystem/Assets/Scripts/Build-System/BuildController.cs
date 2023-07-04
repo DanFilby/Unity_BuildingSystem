@@ -208,7 +208,7 @@ public class BuildController : MonoBehaviour
             //find the closest building near the cursor pointer
             Collider closestBuilding = FindClosestCollider(worldPos, nearbyBuildings);
 
-            //first test whether object should be placed above an exsisting one
+            //first, test whether object should be placed above an exsisting one
             if(PointingAtBuilding(out _, out RaycastHit hitInfo) && CheckBuildAbove(hitInfo.normal)) {
                 worldPos = closestBuilding.transform.position;
                 worldPos.y += closestBuilding.GetComponent<BuildingObject>().BoundsExtent.y + selectedBuildObjBoundsExtent.y;
@@ -218,8 +218,9 @@ public class BuildController : MonoBehaviour
                 Vector3 offset = closestBuilding.transform.position - worldPos;
                 float angle = (Mathf.Atan2(offset.z, offset.x)) * Mathf.Rad2Deg + 180;
 
-                //set the world position as the nearby building
+                //set the world position as the nearby building, with the current objects height
                 worldPos = closestBuilding.transform.position;
+                worldPos.y += selectedBuildObjBoundsExtent.y - closestBuilding.GetComponent<BuildingObject>().BoundsExtent.y;
 
                 //add offset in each direction using the angle calculated
                 if ((angle >= 0 && angle <= 45) || (angle > 305 && angle < 360)) {
